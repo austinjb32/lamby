@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Extract changelog entries from merged PRs and store them for release
-# This script runs on every merge to main and collects changelog information
+# This script runs on every merge to master and collects changelog information
 
 set -e
 

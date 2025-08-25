@@ -42,7 +42,13 @@ else
   
   # For each PR, extract the changelog section
   for PR_NUMBER in $MERGED_PRS; do
-    PR_DATA=$(gh pr view $PR_NUMBER --json title,body)
+    echo "Checking PR #$PR_NUMBER..."
+    
+    # Try to get PR data, skip if PR doesn't exist
+    if ! PR_DATA=$(gh pr view $PR_NUMBER --json title,body 2>/dev/null); then
+      echo "Warning: PR #$PR_NUMBER not found, skipping..."
+      continue
+    fi
     
     PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
     PR_BODY=$(echo "$PR_DATA" | jq -r '.body')
