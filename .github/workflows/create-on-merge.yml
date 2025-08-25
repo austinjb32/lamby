@@ -44,11 +44,6 @@ jobs:
           chmod +x .github/scripts/extract_pr_changelog.sh
           .github/scripts/extract_pr_changelog.sh
 
-      - name: Create and push git tag
-        run: |
-          git tag "v${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
-
       - name: Generate final changelog
         run: |
           chmod +x .github/scripts/generate_changelog.sh
