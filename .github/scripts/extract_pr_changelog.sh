@@ -22,9 +22,16 @@ if [ -n "$PR_NUMBER" ]; then
   PR_DATA=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
     "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
   
-  PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
-  PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.user.login')
-  PR_BODY=$(echo "$PR_DATA" | jq -r '.body // empty')
+  # Check if PR_DATA is valid JSON object
+  if echo "$PR_DATA" | jq -e 'type == "object"' > /dev/null 2>&1; then
+    PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
+    PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.user.login')
+    PR_BODY=$(echo "$PR_DATA" | jq -r '.body // empty')
+  else
+    echo "Error: Failed to fetch PR details for PR #$PR_NUMBER"
+    echo "Response was: $PR_DATA"
+    exit 1
+  fi
   
   # Check if PR body contains ##Changelog section
   if echo "$PR_BODY" | grep -q "##Changelog"; then
