@@ -33,40 +33,55 @@ jobs:
           VERSION=$(ruby -r './lib/lamby/version.rb' -e 'puts Lamby::VERSION')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
-
       - name: Build changelog from PRs
         id: build_changelog
         uses: mikepenz/release-changelog-builder-action@v5
-        with:
-          configurationJson: |
-            {
-              "template": "# Changelog\n\n## v${{ steps.version.outputs.version }} (${{ steps.date.outputs.date }})\n\n#{{CHANGELOG}}",
-              "pr_template": "- #{{TITLE}} (#{{NUMBER}})"
-            }
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Extract additional changelog from PR body
         id: extra_notes
         run: |
-          PR_BODY="${{ github.event.pull_request.body }}"
-          EXTRA=$(echo "$PR_BODY" | sed -n '/## Changelog/,$p' | tail -n +2)
-          # Use delimiter for multiline output
-          echo "extra<<EOF" >> $GITHUB_OUTPUT
-          echo "$EXTRA" >> $GITHUB_OUTPUT
+          if [ -n "${{ github.event.pull_request.body }}" ]; then
+            PR_BODY="${{ github.event.pull_request.body }}"
+            EXTRA=$(echo "$PR_BODY" | sed -n '/## Changelog/,$p' | tail -n +2)
+            if [ -n "$EXTRA" ]; then
+              echo "extra<<EOF" >> $GITHUB_OUTPUT
+              echo "$EXTRA" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "extra=" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "extra=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create formatted changelog
+        id: formatted_changelog
+        run: |
+          CURRENT_DATE=$(date +%Y-%m-%d)
+          VERSION="v${{ steps.version.outputs.version }}"
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "# Changelog" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## $VERSION ($CURRENT_DATE)" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "${{ steps.build_changelog.outputs.changelog }}" >> $GITHUB_OUTPUT
+          
+          if [ -n "${{ steps.extra_notes.outputs.extra }}" ]; then
+            echo "" >> $GITHUB_OUTPUT
+            echo "### Additional Notes" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "${{ steps.extra_notes.outputs.extra }}" >> $GITHUB_OUTPUT
+          fi
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          body: |
-            ${{ steps.build_changelog.outputs.changelog }}
-
-            ${{ steps.extra_notes.outputs.extra }}
+          name: Release v${{ steps.version.outputs.version }}
+          body: ${{ steps.formatted_changelog.outputs.changelog }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
