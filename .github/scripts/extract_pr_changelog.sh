@@ -13,9 +13,15 @@ mkdir -p "$CHANGELOG_ENTRIES_DIR"
 COMMIT_SHA="${GITHUB_SHA}"
 
 # Get PR number associated with this commit (if any)
-PR_NUMBER=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-  "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$COMMIT_SHA/pulls" | \
-  jq -r '.[0].number // empty')
+PR_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+  "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$COMMIT_SHA/pulls")
+  
+# Check if response is an array and has at least one element
+if echo "$PR_RESPONSE" | jq -e 'type == "array" and length > 0' > /dev/null 2>&1; then
+  PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r '.[0].number // empty')
+else
+  PR_NUMBER=""
+fi
 
 if [ -n "$PR_NUMBER" ]; then
   # Get PR details
