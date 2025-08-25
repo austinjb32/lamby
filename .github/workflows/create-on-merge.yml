@@ -1,0 +1,53 @@
+name: Release on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - master
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Configure git
+        run: |
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          git config --global user.name "${{ github.actor }}"
+
+      - name: Get version from gem
+        id: version
+        run: |
+          VERSION=$(ruby -r './lib/lamby/version.rb' -e 'puts Lamby::VERSION')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog from PR descriptions
+        id: changelog
+        run: |
+          chmod +x .github/scripts/extract_pr_changelog.sh
+          .github/scripts/extract_pr_changelog.sh
+
+      - name: Create and push git tag
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Generate final changelog
+        run: |
+          chmod +x .github/scripts/generate_changelog.sh
+          .github/scripts/generate_changelog.sh "v${{ steps.version.outputs.version }}"
